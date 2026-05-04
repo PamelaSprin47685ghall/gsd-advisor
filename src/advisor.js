@@ -24,7 +24,7 @@ import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { completeSimple } from '@gsd/pi-ai'
-import { convertToLlm, DynamicBorder } from '@gsd/pi-coding-agent'
+import { convertToLlm } from '@gsd/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
 import { showAdvisorPicker, showEffortPicker } from './advisor-ui.js'
 
