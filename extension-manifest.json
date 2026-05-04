@@ -1,0 +1,15 @@
+{
+  "id": "advisor",
+  "name": "Advisor",
+  "version": "5.1.0",
+  "description": "Lets the model ask a stronger reviewer model for a second opinion before it acts.",
+  "tier": "community",
+  "requires": {
+    "platform": ">=2.29.0"
+  },
+  "provides": {
+    "tools": ["advisor"],
+    "commands": ["advisor"],
+    "hooks": ["session_start", "before_agent_start"]
+  }
+}
