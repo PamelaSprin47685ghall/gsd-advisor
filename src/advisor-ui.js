@@ -6,8 +6,30 @@
  * SelectList theme wiring.
  */
 
-import { DynamicBorder } from '@gsd/pi-coding-agent'
-import { Container, SelectList, Spacer, Text } from '@gsd/pi-tui'
+// Host dependencies are lazy-loaded so the module never crashes during init.
+let _uiDeps = null
+let _uiDepsPromise = null
+
+async function loadUiDeps() {
+  if (_uiDeps) return _uiDeps
+  if (_uiDepsPromise) return _uiDepsPromise
+  _uiDepsPromise = (async () => {
+    const [codingAgent, tui] = await Promise.all([
+      import('@gsd/pi-coding-agent').catch(() => ({})),
+      import('@gsd/pi-tui').catch(() => ({})),
+    ])
+    _uiDeps = {
+      DynamicBorder: codingAgent.DynamicBorder,
+      Container: tui.Container,
+      SelectList: tui.SelectList,
+      Spacer: tui.Spacer,
+      Text: tui.Text,
+    }
+    return _uiDeps
+  })()
+  return _uiDepsPromise
+}
+
 
 const MAX_VISIBLE_ROWS = 10
 const NAV_HINT = '↑↓ navigate • enter select • esc cancel'
@@ -38,29 +60,30 @@ function selectListTheme(theme) {
   }
 }
 
-function buildSelectPanel(theme, title, proseLines, selectList) {
-  const container = new Container()
-  const border = () => new DynamicBorder((s) => theme.fg('accent', s))
+function buildSelectPanel(theme, title, proseLines, selectList, deps) {
+  const container = new deps.Container()
+  const border = () => new deps.DynamicBorder((s) => theme.fg('accent', s))
 
   container.addChild(border())
-  container.addChild(new Spacer(1))
-  container.addChild(new Text(theme.fg('accent', theme.bold(title)), 1, 0))
-  container.addChild(new Spacer(1))
+  container.addChild(new deps.Spacer(1))
+  container.addChild(new deps.Text(theme.fg('accent', theme.bold(title)), 1, 0))
+  container.addChild(new deps.Spacer(1))
   for (const line of proseLines) {
-    container.addChild(new Text(line, 1, 0))
-    container.addChild(new Spacer(1))
+    container.addChild(new deps.Text(line, 1, 0))
+    container.addChild(new deps.Spacer(1))
   }
   container.addChild(selectList)
-  container.addChild(new Spacer(1))
-  container.addChild(new Text(theme.fg('dim', NAV_HINT), 1, 0))
-  container.addChild(new Spacer(1))
+  container.addChild(new deps.Spacer(1))
+  container.addChild(new deps.Text(theme.fg('dim', NAV_HINT), 1, 0))
+  container.addChild(new deps.Spacer(1))
   container.addChild(border())
   return container
 }
 
 export async function showAdvisorPicker(ctx, items) {
+  const deps = await loadUiDeps()
   return ctx.ui.custom((tui, theme, _kb, done) => {
-    const selectList = new SelectList(
+    const selectList = new deps.SelectList(
       items,
       Math.min(items.length, MAX_VISIBLE_ROWS),
       selectListTheme(theme),
@@ -73,6 +96,7 @@ export async function showAdvisorPicker(ctx, items) {
       ADVISOR_HEADER_TITLE,
       [ADVISOR_HEADER_PROSE_1, ADVISOR_HEADER_PROSE_2],
       selectList,
+      deps,
     )
 
     return {
@@ -92,8 +116,9 @@ export async function showEffortPicker(
   currentEffort,
   defaultEffort,
 ) {
+  const deps = await loadUiDeps()
   return ctx.ui.custom((tui, theme, _kb, done) => {
-    const selectList = new SelectList(
+    const selectList = new deps.SelectList(
       items,
       Math.min(items.length, MAX_VISIBLE_ROWS),
       selectListTheme(theme),
@@ -114,6 +139,7 @@ export async function showEffortPicker(
       EFFORT_HEADER_TITLE,
       [EFFORT_HEADER_PROSE],
       selectList,
+      deps,
     )
 
     return {

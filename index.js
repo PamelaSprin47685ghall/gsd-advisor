@@ -10,10 +10,10 @@ ensureBundledExtensionPath(import.meta.url)
 
 const registeredPluginApis = new WeakSet()
 
-export default function (pi) {
+export default async function (pi) {
   if (registeredPluginApis.has(pi)) return
 
-  registerAdvisorTool(pi)
+  await registerAdvisorTool(pi)
   registerAdvisorCommand(pi)
   registerAdvisorBeforeAgentStart(pi)
 

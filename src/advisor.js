@@ -23,9 +23,29 @@ import {
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { completeSimple } from '@gsd/pi-ai'
-import { convertToLlm } from '@gsd/pi-coding-agent'
-import { Type } from '@sinclair/typebox'
+// Host dependencies are lazy-loaded so the module never crashes during init.
+let _aiDeps = null
+let _aiDepsPromise = null
+
+async function loadAiDeps() {
+  if (_aiDeps) return _aiDeps
+  if (_aiDepsPromise) return _aiDepsPromise
+  _aiDepsPromise = (async () => {
+    const [piAi, codingAgent, typebox] = await Promise.all([
+      import('@gsd/pi-ai').catch(() => ({})),
+      import('@gsd/pi-coding-agent').catch(() => ({})),
+      import('@sinclair/typebox').catch(() => ({})),
+    ])
+    _aiDeps = {
+      completeSimple: piAi.completeSimple,
+      convertToLlm: codingAgent.convertToLlm,
+      Type: typebox.Type,
+    }
+    return _aiDeps
+  })()
+  return _aiDepsPromise
+}
+
 import { showAdvisorPicker, showEffortPicker } from './advisor-ui.js'
 
 // ---------------------------------------------------------------------------
@@ -309,6 +329,7 @@ function buildErrorResult(advisorLabel, userText, errorMessage) {
 }
 
 async function executeAdvisor(ctx, pi, signal, onUpdate) {
+  const { completeSimple, convertToLlm } = await loadAiDeps()
   const advisor = getAdvisorModel()
   if (!advisor) {
     return buildErrorResult(undefined, ERR_NO_MODEL, ERR_NO_MODEL_SELECTED)
@@ -417,7 +438,18 @@ const errNoApiKeyDetail = (provider) => `no API key for ${provider}`
 // Tool registration
 // ---------------------------------------------------------------------------
 
-const AdvisorParams = Type.Object({})
+let AdvisorParams = null
+
+async function ensureAdvisorParams() {
+  if (AdvisorParams) return AdvisorParams
+  const { Type } = await loadAiDeps()
+  if (Type?.Object) {
+    AdvisorParams = Type.Object({})
+  } else {
+    AdvisorParams = { type: 'object', properties: {} }
+  }
+  return AdvisorParams
+}
 
 const ADVISOR_DESCRIPTION =
   'Escalate to a stronger reviewer model for guidance. When you need ' +
@@ -439,14 +471,15 @@ const ADVISOR_PROMPT_GUIDELINES = [
   'If you\'ve already retrieved data pointing one way and the advisor points another, don\'t silently switch — surface the conflict in one more `advisor` call ("I found X, you suggest Y, which constraint breaks the tie?"). A reconcile call is cheaper than committing to the wrong branch.',
 ]
 
-function registerAdvisorTool(pi) {
+async function registerAdvisorTool(pi) {
+  const params = await ensureAdvisorParams()
   pi.registerTool({
     name: ADVISOR_TOOL_NAME,
     label: TOOL_LABEL,
     description: ADVISOR_DESCRIPTION,
     promptSnippet: ADVISOR_PROMPT_SNIPPET,
     promptGuidelines: ADVISOR_PROMPT_GUIDELINES,
-    parameters: AdvisorParams,
+    parameters: params,
 
     async execute(_toolCallId, _params, signal, onUpdate, ctx) {
       return executeAdvisor(ctx, pi, signal, onUpdate)
