@@ -150,7 +150,7 @@ let _systemPrompt = null
 function getAdvisorSystemPrompt() {
   if (!_systemPrompt) {
     _systemPrompt = readFileSync(
-      fileURLToPath(new URL('./prompts/advisor-system.txt', import.meta.url)),
+      fileURLToPath(new URL('../prompts/advisor-system.txt', import.meta.url)),
       'utf-8',
     ).trimEnd()
   }
